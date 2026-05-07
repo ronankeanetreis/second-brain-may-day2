@@ -77,6 +77,64 @@ def test_cli_new_file_content_has_timestamp(tmp_note_dir):
     assert re.search(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", text)
 
 
+def test_cli_new_with_content_flag(tmp_note_dir):
+    result = runner.invoke(cli, ["new", "Flag note", "--content", "Body text here"])
+    assert result.exit_code == 0
+    md_file = next(tmp_note_dir.glob("*.md"))
+    text = md_file.read_text()
+    assert "# Flag note" in text
+    assert "Body text here" in text
+
+
+def test_cli_new_with_short_content_flag(tmp_note_dir):
+    result = runner.invoke(cli, ["new", "Short flag", "-c", "Short body"])
+    assert result.exit_code == 0
+    md_file = next(tmp_note_dir.glob("*.md"))
+    assert "Short body" in md_file.read_text()
+
+
+def test_cli_new_with_from_file_flag(tmp_note_dir, tmp_path):
+    body_file = tmp_path / "body.txt"
+    body_file.write_text("File body content")
+    result = runner.invoke(cli, ["new", "File note", "--from-file", str(body_file)])
+    assert result.exit_code == 0
+    md_file = next(tmp_note_dir.glob("*.md"))
+    assert "File body content" in md_file.read_text()
+
+
+def test_cli_new_with_stdin(tmp_note_dir):
+    result = runner.invoke(cli, ["new", "Stdin note"], input="Stdin body content")
+    assert result.exit_code == 0
+    md_file = next(tmp_note_dir.glob("*.md"))
+    assert "Stdin body content" in md_file.read_text()
+
+
+def test_cli_new_content_flag_wins_over_stdin(tmp_note_dir):
+    result = runner.invoke(
+        cli,
+        ["new", "Conflict note", "--content", "Flag wins"],
+        input="Stdin loses",
+    )
+    assert result.exit_code == 0
+    md_file = next(tmp_note_dir.glob("*.md"))
+    text = md_file.read_text()
+    assert "Flag wins" in text
+    assert "Stdin loses" not in text
+    assert "Warning" in result.output or "Warning" in (
+        result.stderr if hasattr(result, "stderr") else ""
+    )
+
+
+def test_cli_new_no_body_unchanged(tmp_note_dir):
+    result = runner.invoke(cli, ["new", "Plain note"])
+    assert result.exit_code == 0
+    md_file = next(tmp_note_dir.glob("*.md"))
+    lines = md_file.read_text().splitlines()
+    assert lines[0] == "# Plain note"
+    assert re.search(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", lines[2])
+    assert len(lines) == 3  # heading, blank, timestamp — no extra body
+
+
 # ---------------------------------------------------------------------------
 # help
 # ---------------------------------------------------------------------------
