@@ -26,7 +26,9 @@ def configure_logging():
     log_file = os.environ.get("LOG_FILE", "app.log")
     logger.remove()
     logger.add(sys.stderr, level=log_level, format=LOG_FORMAT)
-    logger.add(log_file, level="DEBUG", rotation="50 KB", retention=1, format=LOG_FORMAT)
+    logger.add(
+        log_file, level="DEBUG", rotation="50 KB", retention=1, format=LOG_FORMAT
+    )
 
 
 @logger.catch
