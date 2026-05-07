@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 import click
@@ -20,13 +21,38 @@ def cli():
 
 @cli.command()
 @click.argument("title")
-def new(title: str):
+@click.option("--content", "-c", default=None, help="Note body content.")
+@click.option(
+    "--from-file",
+    "from_file",
+    type=click.Path(exists=True),
+    default=None,
+    help="Read body content from file.",
+)
+def new(title: str, content: str | None, from_file: str | None):
     """Create a new note with the given TITLE."""
     base_dir = Path(
         os.environ.get("SECOND_BRAIN_DIR", str(Path.home() / "second_brain"))
     ).expanduser()
+
+    stdin_data = None if sys.stdin.isatty() else sys.stdin.read()
+
+    active_sources = sum(x is not None for x in [content, from_file, stdin_data])
+    if active_sources > 1:
+        click.echo(
+            "Warning: multiple body sources provided; using --content > --from-file > stdin.",
+            err=True,
+        )
+
+    if content is not None:
+        body = content
+    elif from_file is not None:
+        body = Path(from_file).read_text(encoding="utf-8")
+    else:
+        body = stdin_data
+
     logger.debug("Creating note in {}", base_dir)
-    path = create_note(title, base_dir)
+    path = create_note(title, base_dir, body=body)
     logger.info("Created note: {}", path)
     click.echo(path)
 
